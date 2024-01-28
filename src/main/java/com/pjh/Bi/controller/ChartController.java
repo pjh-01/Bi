@@ -11,6 +11,7 @@ import com.pjh.Bi.common.ResultUtils;
 import com.pjh.Bi.constant.UserConstant;
 import com.pjh.Bi.exception.BusinessException;
 import com.pjh.Bi.exception.ThrowUtils;
+import com.pjh.Bi.manager.RedisLimiterManager;
 import com.pjh.Bi.model.dto.chart.ChartAddRequest;
 import com.pjh.Bi.model.entity.Chart;
 import com.pjh.Bi.model.entity.User;
@@ -53,11 +54,9 @@ public class ChartController {
     @Resource
     private UserService userService;
 
-//    @Resource
-//    private AiManager aiManager;
 
-//    @Resource
-//    private RedisLimiterManager redisLimiterManager;
+    @Resource
+    private RedisLimiterManager redisLimiterManager;
 
 //    @Resource
 //    private ThreadPoolExecutor threadPoolExecutor;
