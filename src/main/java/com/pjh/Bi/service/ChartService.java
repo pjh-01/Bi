@@ -10,4 +10,11 @@ import com.baomidou.mybatisplus.extension.service.IService;
 */
 public interface ChartService extends IService<Chart> {
 
+    /**
+     * 动态创建表
+     * @param csvData
+     * @return
+     */
+    boolean createTableForCsvData(String csvData,String id);
+
 }

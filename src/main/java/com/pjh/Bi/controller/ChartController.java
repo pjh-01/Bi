@@ -1,6 +1,7 @@
 package com.pjh.Bi.controller;
 
 import cn.hutool.core.io.FileUtil;
+import cn.hutool.core.util.IdUtil;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.pjh.Bi.annotation.AuthCheck;
@@ -262,9 +263,9 @@ public class ChartController {
 
         User loginUser = userService.getLoginUser(request);
         // 限流判断，每个用户一个限流器
-        //redisLimiterManager.doRateLimit("genChartByAi_" + loginUser.getId());
-        // 无需写 prompt，直接调用现有模型，https://www.yucongming.com，公众号搜【鱼聪明AI】
-        final String prompt = "你是一个数据分析师和前端开发专家，你需要分析以下csv数据，回答" + goal + ",并给出不少于200字的分析结论和用于生成echarts" + chartType + "option的json。";
+        redisLimiterManager.doRateLimit("genChartByAi_" + loginUser.getId());
+        // 定义prompt
+        final String prompt = "你是一个数据分析师和前端开发专家，你需要分析以下csv数据，回答" + goal + ",并给出不少于200字的分析结论和用于生成echarts" + chartType + "option的json,你的json不能包含任何注释！";
         // 构造用户输入
         StringBuilder userInput = new StringBuilder();
         //注入prompt
@@ -297,7 +298,7 @@ public class ChartController {
             String extractedJson = matcher.group();
             System.out.println(extractedJson);
 
-            genChart=extractedJson;
+            genChart = extractedJson;
         } else {
             System.out.println("未找到匹配的 JSON 数据");
         }
@@ -305,12 +306,22 @@ public class ChartController {
         Chart chart = new Chart();
         chart.setName(name);
         chart.setGoal(goal);
-        chart.setChartData(csvData);
+        //这边需要改造一下，不能直接把数据存在表的字段里面了。不然数据多了查询就非常慢
+        //1.比如别的用户存了100M的数据，我虽然用不到，但是数据库还得全局搜索，搜到他的多少会影响速度
+        //2.还有100M的数据，用户可能不需要看这么多，只需要对比其中几列就好了，但字段肯定得全部读出来，这又很慢
+//        chart.setChartData(csvData);
+        String uuid = IdUtil.simpleUUID().substring(0, 6);
+        String chartId = "_" + uuid + "_" + loginUser.getId();
+        //在原chart表中存储寻找独表的索引，由独表的uuid和userId组成
+        chart.setChartData(chartId);
         chart.setChartType(chartType);
         chart.setGenChart(genChart);
         chart.setGenResult(genResult);
         chart.setUserId(loginUser.getId());
+        chart.setStatus("succeed");
         boolean saveResult = chartService.save(chart);
+        //生成独表
+        chartService.createTableForCsvData(csvData, chartId);
         ThrowUtils.throwIf(!saveResult, ErrorCode.SYSTEM_ERROR, "图表保存失败");
         BiResponse biResponse = new BiResponse();
         biResponse.setGenChart(genChart);
